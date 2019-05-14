@@ -1,0 +1,1 @@
+/usr/bin/c++  -g  -rdynamic CMakeFiles/triangulation.dir/triangulation.o CMakeFiles/triangulation.dir/Libs/coordinate.o  -o triangulation 

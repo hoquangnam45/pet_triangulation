@@ -1,0 +1,40 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/hoquangnam/Documents/Triangulation/Libs/coordinate.cpp
+coordinate.h
+/home/hoquangnam/Documents/Triangulation/Libs/coordinate.h
+cmath
+-
+iomanip
+-
+stdio.h
+-
+string.h
+-
+
+/home/hoquangnam/Documents/Triangulation/Libs/coordinate.h
+iostream
+-
+
+/home/hoquangnam/Documents/Triangulation/triangulation.cpp
+iostream
+-
+fstream
+-
+string.h
+-
+stdio.h
+-
+sstream
+-
+iomanip
+-
+Libs/coordinate.h
+/home/hoquangnam/Documents/Triangulation/Libs/coordinate.h
+

@@ -15,4 +15,4 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
-add_executable(triangulation triangulation.cpp)
+add_executable(triangulation triangulation.cpp Libs/coordinate.cpp)

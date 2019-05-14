@@ -1,0 +1,5 @@
+gateway0: (0; 0; 0)
+gateway1: (1; 2; 3)
+gateway2: (1; 3; 5)
+gateway4: (1; 4; 6)
+receiver: (10; 10; 10)
