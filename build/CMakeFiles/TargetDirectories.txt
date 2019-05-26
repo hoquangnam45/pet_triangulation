@@ -1,1 +1,0 @@
-/home/hoquangnam/Documents/Triangulation/build/CMakeFiles/triangulation.dir
