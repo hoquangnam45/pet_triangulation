@@ -29,11 +29,11 @@ class Coordinate{
             std::vector<double>& dist_to_beacon,
             std::vector<Coordinate>& beacon 
         );
-        arma::Mat<double> toMat();
+        arma::mat toMat();
     private:
         double x, y, z;
         const double EARTH_RADIUS_IN_KM = 6371;
-
+        const double NEWTON_ERR_THRESH;
         // coordinateMode = FLAT;
         // enum coordinateMode{
         //     FLAT,
