@@ -1,3 +1,1 @@
-/home/hoquangnam/Documents/Triangulation/build/CMakeFiles/rebuild_cache.dir
 /home/hoquangnam/Documents/Triangulation/build/CMakeFiles/triangulation.dir
-/home/hoquangnam/Documents/Triangulation/build/CMakeFiles/edit_cache.dir

@@ -1,1 +1,1 @@
-/usr/bin/c++  -g  -rdynamic CMakeFiles/triangulation.dir/triangulation.o CMakeFiles/triangulation.dir/Libs/coordinate.o  -o triangulation 
+/usr/bin/c++   -g -O0   CMakeFiles/triangulation.dir/triangulation.o CMakeFiles/triangulation.dir/Libs/coordinate.o  -o triangulation  -L/home/hoquangnam/Documents/Triangulation/Libs/armadillo_libs -rdynamic -llapack -lblas -Wl,-rpath,/home/hoquangnam/Documents/Triangulation/Libs/armadillo_libs 
