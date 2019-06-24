@@ -23,5 +23,5 @@ endif()
 
 #include_directories(Libs/armadillo/includes)
 link_directories(/home/hoquangnam/Documents/Triangulation/Libs/armadillo_libs)
-add_executable(triangulation triangulation.cpp Libs/coordinate.cpp)
+add_executable(triangulation triangulation.cpp Libs/coordinate.cpp Libs/base_coordinate.cpp Libs/polar_coordinate.cpp)
 target_link_libraries(triangulation lapack blas)
