@@ -89,12 +89,6 @@ Coordinate Coordinate::triangulate(
     arma::mat b_cond_matrix = A.t() * b;
     arma::mat X;
 
-    // Check full rank
-    int nrow = cond_matrix.n_rows;
-    int ncol = cond_matrix.n_cols;
-    int min_dimension = nrow < ncol ? nrow : ncol;
-    if (rank(cond_matrix) < min_dimension) throw std::runtime_error("Singular matrix, not full rank");
-
     // Test condition of A
     if (cond(cond_matrix) < 5){
         X = inv(cond_matrix) * b_cond_matrix + ref_point.toMat();
@@ -127,7 +121,7 @@ Coordinate Coordinate::triangulate(
         arma::mat temp = X;
         X -= inv(jacobian.t() * jacobian) * jacobian.t() * f;
         diff = norm(X - temp); 
-        std::cout << "iter " << iter + 1 << ": "<< diff << std::endl;//"\n>>>>\n" << X << "\n***\n" << temp << std::endl;
+        //std::cout << "iter " << iter + 1 << ": "<< diff << std::endl;//"\n>>>>\n" << X << "\n***\n" << temp << std::endl;
         iter++;
         //std::cout << X << std::endl;
     }
@@ -158,10 +152,25 @@ void reduceMatrix(arma::mat& Matrix){
 }
 
 void backSubstitution(arma::mat& equation, arma::mat& ret){
-    if (ret.empty()) ret = arma::mat(3,1);
-    ret(2, 0) = equation(2, 3);
-    ret(1, 0) = equation(1, 3) - ret(2, 0) * equation(1, 2);
-    ret(0, 0) = equation(0, 3) - ret(2, 0) * equation(0, 2) - ret(1, 0) * equation(0, 1);
+    // Check full rank
+    int nrow = equation.n_rows;
+    int ncol = equation.n_cols;
+    //int min_dimension = nrow < ncol ? nrow : ncol;
+    if (rank(equation) < ncol - 1) throw std::runtime_error("Can't back substitute");
+    
+    if (ret.empty() || arma::size(ret) != arma::size(ncol - 1, 1)) {
+        ret.clear();
+        ret = arma::mat(ncol - 1, 1);
+    }
+    for (int i = ncol - 2; i >= 0; i--){
+        if (i == ncol - 2) ret(i, 0) = equation(i, ncol - 1);
+        else {
+            ret(i, 0) = equation(i, ncol - 1);
+            for (int j = ncol - 2; j >= i + 1; j--) 
+                ret(i, 0) -= equation(i, j) * ret(j, 0);
+            //ret(i, 0) /= equation(i, i);
+        }
+    }
 }
 
 void evaluateJacobian(
@@ -170,8 +179,17 @@ void evaluateJacobian(
     arma::mat& theta,
     arma::mat& ret
 ){
-    //std::cout << ret.empty() << std::endl;
-    if (ret.empty()) ret = arma::mat(beacon.size(), 3);
+    if (beacon.size() < 4){
+        throw std::runtime_error("not enough beacon");
+    }
+
+    if (arma::size(theta) != arma::size(3,1)) throw std::runtime_error("Theta dimension is illegal");
+         
+    if (ret.empty() || arma::size(ret) != arma::size(beacon.size(), 3)){
+        ret.clear();
+        ret = arma::mat(beacon.size(), 3);
+    }
+
     for (int i = 0; i < beacon.size(); i++){
         //std::cout << theta <<std::endl;
         double denominator =    sqrt(
@@ -190,7 +208,17 @@ void evaluateF(
     arma::mat& theta,
     arma::mat& ret
 ){
-    if (ret.empty()) ret = arma::mat(beacon.size(), 1);
+    if (dist_to_beacon.size() != beacon.size() | dist_to_beacon.size() < 4){
+        throw std::runtime_error("Inconsistent amount of distance and beacon or not enough beacon");
+    }
+
+    if (arma::size(theta) != arma::size(3,1)) throw std::runtime_error("Theta dimension is illegal");
+         
+    if (ret.empty() || arma::size(ret) != arma::size(beacon.size(), 1)){
+        ret.clear();
+        ret = arma::mat(beacon.size(), 1);
+    }
+
     for (int i = 0; i < beacon.size(); i++){
         ret(i, 0) = sqrt(
                             pow(theta(0, 0) - beacon[i].getX(), 2) + 
