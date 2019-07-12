@@ -27,12 +27,26 @@ arma::mat Coordinate::toMat(){
 }
 
 Coordinate Coordinate::toCoordinate(arma::mat& Matrix){
-    double  x = Matrix(0,0),
-            y = Matrix(1,0),
-            z = Matrix(2,0);
-    Coordinate ret(x, y, z);
-    //std::cout << "*" << ret << std::endl;
-    return ret;
+    if (arma::size(Matrix) == arma::size(3,1)){
+        double  x = Matrix(0,0),
+                y = Matrix(1,0),
+                z = Matrix(2,0);
+        Coordinate ret(x, y, z);
+        //std::cout << "*" << ret << std::endl;
+        return ret;  
+    }
+    else if(arma::size(Matrix) == arma::size(1,3)){
+        double  x = Matrix(0,0),
+                y = Matrix(0,1),
+                z = Matrix(0,2);
+        Coordinate ret(x, y, z);
+        //std::cout << "*" << ret << std::endl;
+        return ret;  
+    }
+    else{
+        throw std::runtime_error("Can't convert matrix to coordinate");
+    }
+
 }
 
 void reduceMatrix(arma::mat& Matrix);
@@ -107,27 +121,33 @@ Coordinate Coordinate::triangulate(
         backSubstitution(concat, X);
         X = X + ref_point.toMat();
     }
-    std::cout << X << std::endl;
+    std::cout << "initial guessed coordinate: \n" << toCoordinate(X) << std::endl;
     
     arma::mat f;
     arma::mat jacobian;
     double diff = 1000;
+    double min_diff = diff;
     int iter = 0;
     // Solve by newton method
     while (diff > NEWTON_DIFF_THRESH && iter < MAX_NEWTON_ITER){
         evaluateJacobian(beacon, X, jacobian);
         evaluateF(dist_to_beacon, beacon, X, f);
         //std::cout << jacobian << f << beacon.size() << dist_to_beacon.size()<< std::endl;
-        arma::mat temp = X;
-        X -= inv(jacobian.t() * jacobian) * jacobian.t() * f;
-        diff = norm(X - temp); 
-        //std::cout << "iter " << iter + 1 << ": "<< diff << std::endl;//"\n>>>>\n" << X << "\n***\n" << temp << std::endl;
+        arma::mat temp = X - inv(jacobian.t() * jacobian) * jacobian.t() * f;
+        diff = norm(X - temp);
+        #if PRINT_NEWTON_DIFF != 0
+        std::cout << "iter " << iter + 1 << " diff: "<< diff << std::endl;//"\n>>>>\n" << X << "\n***\n" << temp << std::endl;
+        #endif
+        if (diff < min_diff) {
+            min_diff = diff;
+            X = temp;
+        }
+        else break;
         iter++;
         //std::cout << X << std::endl;
     }
-    std::cout << X << std::endl;
+    std::cout << "refined coordinate: \n" << toCoordinate(X) << std::endl;
     Coordinate ret = toCoordinate(X); 
-    std::cout << ret << std::endl;
     return ret;
 }
 

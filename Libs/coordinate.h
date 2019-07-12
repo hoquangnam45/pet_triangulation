@@ -1,6 +1,7 @@
 #include <vector>
 #include "armadillo_include/armadillo"
 #include "base_coordinate.h"
+#define PRINT_NEWTON_DIFF 1
 class Coordinate: public baseCoordinate{
     public:
         Coordinate(double x, double y, double z): baseCoordinate(x, y, z){};

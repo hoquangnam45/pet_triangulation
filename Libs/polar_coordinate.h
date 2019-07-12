@@ -1,5 +1,6 @@
 #include "coordinate.h"
 
+// Parameter reference: 14gravity1_2.pdf
 class polarCoordinate: public baseCoordinate{
     public:
         polarCoordinate(double lat, double lon, double height): baseCoordinate(lat, lon, height){};
@@ -10,13 +11,16 @@ class polarCoordinate: public baseCoordinate{
         double getLong();
         double getHeight();
 
-        polarCoordinate CartersiantoPolar(Coordinate& originPoint, polarCoordinate& originPointPolar, Coordinate& convertPoint);
-        Coordinate PolartoCartersian(Coordinate& originPoint, polarCoordinate& originPointPolar, Coordinate& convertPoint);
+        static polarCoordinate ENUtoWSG84(polarCoordinate& refPolarWSG84, Coordinate& localCartPoint);
+        static polarCoordinate ENUtoWSG84();
+        static polarCoordinate ECEFtoWSG84(Coordinate);
     private:
-        double angleLon(double baseLon, double lon);
-        double angleLat(double baseLat, double lat);
         double& lat = x;
         double& lon = y;
         double& height = z;
-        const double EARTH_RADIUS = 0;
+        static double sind(double degree);
+        static double cosd(double degree);
+        static constexpr double EQUATORIAL_RADIUS_METER = 6378137;
+        static constexpr double POLAR_RADIUS_METER = 6356752.3;
+        static constexpr double PI = 3.14159265358979323846264;
 };

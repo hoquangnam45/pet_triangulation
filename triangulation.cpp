@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <sstream>
 #include <iomanip>
-#include "Libs/coordinate.h"
+#include "Libs/polar_coordinate.h"
 using namespace std;
 ifstream fcoordinate;
 ifstream fdistance;
@@ -39,6 +39,7 @@ int main(){
     vector<double> dist_to_beacon(dist_to_gateway, dist_to_gateway + 5);
     vector<Coordinate> beacon(gateway, gateway + 5);
     Coordinate::triangulate(dist_to_beacon, beacon);
+    polarCoordinate::ENUtoWSG84();
     //cout << dist_to_beacon << endl;
     // for(int i = 0; i < 2; i++){
     //     cin >> gateway[i];
