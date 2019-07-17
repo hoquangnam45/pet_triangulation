@@ -1,32 +1,52 @@
 #include "base_coordinate.h"
 
-baseCoordinate::baseCoordinate() : x(0), y(0), z(0) {};
-baseCoordinate::~baseCoordinate(){};
-baseCoordinate::baseCoordinate(double x, double y, double z) : x(x), y(y), z(z) {};
+baseCoordinate::baseCoordinate(){
+    setCoordinate(0,0,0);
+}
 
-void baseCoordinate::setCoordinate(int x, int y, int z){
+baseCoordinate::baseCoordinate(const baseCoordinate& b){
+    *this = b;
+}
+
+baseCoordinate::~baseCoordinate(){};
+
+baseCoordinate::baseCoordinate(double x, double y, double z){
+    setCoordinate(x,y,z);
+}
+
+void baseCoordinate::setCoordinate(double x, double y, double z){
     this->x = x;
     this->y = y;
     this->z = z;
 }
 
 baseCoordinate& baseCoordinate::operator=(const baseCoordinate& b){
-    this->x = b.x;
-    this->y = b.y;
-    this->z = b.z;
+    setCoordinate(b.x, b.y, b.z);
 };
 
-void baseCoordinate::parseBuf(const char* buffer){
-    int count = sscanf(buffer, " (%lf;%lf;%lf)", &this->x, &this->y, &this->z);
-    if (count != 3) std::cout << "Input bị lỗi, vui lòng kiểm tra lại" << std::endl;
+bool baseCoordinate::parseBuf(const char* buffer){
+    double x, y, z;
+    int count = sscanf(buffer, " (%lf;%lf;%lf)", &x, &y, &z);
+    if (count != 3){ 
+        std::cout << "Input error, please check coordinate input" << std::endl;
+        return false;
+    }
+    else{
+        setCoordinate(x, y, z);
+        return true;
+    }
 }
+
 std::istream & operator >> (std::istream &in, baseCoordinate &c){
     // (x; y; z)
-    char buffer[255];
-    char eater;
-    int i = 0;
     while(in.peek() == ' ') in.get();
-    while (in.peek() && i < sizeof(buffer) - 1){
+    if (in.peek() != '('){
+        in.setstate(std::ios_base::failbit);
+        return in;
+    }
+    int i = 0;
+    char buffer[255];
+    while (i < sizeof(buffer) - 1){
         if ((buffer[i] = in.get()) == ')') {
             i++;
             break;
@@ -34,13 +54,14 @@ std::istream & operator >> (std::istream &in, baseCoordinate &c){
         i++;
     }
     buffer[i] = '\0';
-    c.parseBuf(buffer);
+    if(!c.parseBuf(buffer))
+        in.setstate(std::ios_base::failbit);
     return in;
 }
 
 std::ostream & operator << (std::ostream &out, const baseCoordinate &c){
     // (x; y; z)
-    out << std::setprecision(12) << "(" << c.x << "; " << c.y << "; " << c.z << ")";
+    out << "(" << c.x << "; " << c.y << "; " << c.z << ")";
     return out;
 }
 
@@ -51,11 +72,19 @@ void baseCoordinate::printOut(){
 double baseCoordinate::getX(){
     return x;
 }
+
 double baseCoordinate::getY(){
     return y;
 };
+
 double baseCoordinate::getZ(){
     return z;
 };
 
+double baseCoordinate::sind(double degree){
+    return sin(degree / 180. * PI);
+}
 
+double baseCoordinate::cosd(double degree){
+    return cos(degree / 180. * PI);
+}

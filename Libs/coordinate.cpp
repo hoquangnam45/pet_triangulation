@@ -1,19 +1,63 @@
 #include "coordinate.h"
+
+Coordinate::Coordinate(double x, double y, double z){
+    setCoordinate(x, y, z);
+}
+
+Coordinate::Coordinate(){
+    setCoordinate(0,0,0);
+}
+
+Coordinate::Coordinate(const Coordinate& b){
+    *this = b;
+}
+
+Coordinate::~Coordinate(){}
+
+void Coordinate::setPolar(polarCoordinate& b){
+    self_polar = b;
+}
+
+void Coordinate::setCoordinate(Coordinate& b){
+    setCoordinate(b.x, b.y, b.z);
+}
+
+polarCoordinate& Coordinate::getPolar(){
+    return self_polar;
+}
+
+Coordinate& Coordinate::operator=(const Coordinate& b){
+    baseCoordinate::operator=(b);
+    this->self_polar = b.self_polar;
+}
+
+bool Coordinate::operator==(Coordinate& b){
+    if (this->euclideanDistance(b) <= RADIUS_SAME_POINT) return true;
+    return false;
+}
+
+bool Coordinate::operator!=(Coordinate& b){
+    return !(*this == b);
+}
+
 double Coordinate::euclideanDistance(Coordinate &a, Coordinate& b){
     double  diffx = a.x - b.x,
             diffy = a.y - b.y,
             diffz = a.z - b.z;
     return sqrt(diffx * diffx + diffy * diffy + diffz * diffz);
 }
+
 double Coordinate::euclideanDistance(Coordinate& b){
     return euclideanDistance(*this, b);
 }
+
 double Coordinate::euclideanDistanceSquared(Coordinate &a, Coordinate& b){
     double  diffx = a.x - b.x,
             diffy = a.y - b.y,
             diffz = a.z - b.z;
     return diffx * diffx + diffy * diffy + diffz * diffz;
 }
+
 double Coordinate::euclideanDistanceSquared(Coordinate& b){
     return euclideanDistanceSquared(*this, b);
 }
@@ -48,6 +92,68 @@ Coordinate Coordinate::toCoordinate(arma::mat& Matrix){
     }
 
 }
+// WGS84 model
+// Reference: https://en.wikipedia.org/wiki/Geographic_coordinate_conversion
+Coordinate Coordinate::WGS84toECEF(polarCoordinate& coor){
+    double  lat = coor.getLat(),
+            lon = coor.getLong(),
+            height = coor.getHeight();
+    double a = EQUATORIAL_RADIUS_METER;
+    double b = POLAR_RADIUS_METER;
+    double e = sqrt(1 - pow(b/a, 2));
+    double N =  a / sqrt(1-pow(e * sind(lat), 2));
+    double x = (N + height) * cosd(lat) * cosd(lon);
+    double y = (N + height) * cosd(lat) * sind(lon);
+    double z = (N * pow(b / a, 2) + height) * sind(lat);
+    return Coordinate(x, y, z);
+}
+
+Coordinate Coordinate::WGS84toENU(Coordinate& refPoint, polarCoordinate& WGS84Point){
+    Coordinate originPoint = findOriginENU(refPoint);
+
+    double  lat = originPoint.getPolar().getLat(),
+            lon = originPoint.getPolar().getLong(),
+            height = originPoint.getPolar().getHeight();
+
+    // Calculate ECEF coordinate of origin point
+    polarCoordinate originPolar = originPoint.getPolar();
+    Coordinate originECEF = Coordinate::WGS84toECEF(originPolar);
+    //std::cout << originECEF << std::endl;
+
+    // Calculate rotation matrix axis
+    arma::mat rot = {
+        {-sind(lon), -cosd(lon) * sind(lat), cosd(lon) * cosd(lat)},
+        {cosd(lon), -sind(lon) * sind(lat), sind(lon) * cosd(lat)},
+        {0, cosd(lat), sind(lat)}
+    };
+
+    // Convert local WGS84 to ECEF
+    Coordinate localECEF = Coordinate::WGS84toECEF(WGS84Point);
+
+    arma::mat localENU = rot.t() * (localECEF.toMat() - originECEF.toMat());
+    return Coordinate::toCoordinate(localENU);
+}
+
+Coordinate Coordinate::findOriginENU(Coordinate& refPoint){
+    Coordinate originPoint;
+    if (originPoint != refPoint){
+        Coordinate newRefPoint;
+        
+        newRefPoint.setCoordinate(0,0,0);
+        polarCoordinate temp = refPoint.getPolar();
+        newRefPoint.setPolar(temp);
+
+        originPoint.setCoordinate(-refPoint.getX(), -refPoint.getY(), -refPoint.getZ());
+
+        polarCoordinate originPolar = polarCoordinate::ENUtoWGS84(newRefPoint, originPoint);
+        originPoint.setPolar(originPolar);
+        originPoint.setCoordinate(0,0,0);
+    }
+    else{
+        originPoint = refPoint;
+    }
+    return originPoint;
+}
 
 void reduceMatrix(arma::mat& Matrix);
 void backSubstitution(arma::mat& equation, arma::mat& ret);
@@ -70,8 +176,10 @@ Coordinate Coordinate::triangulate(
     std::vector<Coordinate>& beacon
 ){
     if (dist_to_beacon.size() != beacon.size() | dist_to_beacon.size() < 4){
-        Coordinate dummy(-1, -1, -1);
-        return dummy;
+        if (dist_to_beacon.size() != beacon.size()) 
+            throw std::runtime_error("Inconsistent number of beacon and distance");
+        if (dist_to_beacon.size() < 4)
+            throw std::runtime_error("Not enough beacon to triangulate");
     }
     /* Calculate initial guess */
     // Set ref point
@@ -142,10 +250,12 @@ Coordinate Coordinate::triangulate(
             min_diff = diff;
             X = temp;
         }
-        else break;
+        else
+            break;
         iter++;
         //std::cout << X << std::endl;
     }
+    //std::cout << iter << std::endl;
     std::cout << "refined coordinate: \n" << toCoordinate(X) << std::endl;
     Coordinate ret = toCoordinate(X); 
     return ret;
@@ -176,7 +286,7 @@ void backSubstitution(arma::mat& equation, arma::mat& ret){
     int nrow = equation.n_rows;
     int ncol = equation.n_cols;
     //int min_dimension = nrow < ncol ? nrow : ncol;
-    if (rank(equation) < ncol - 1) throw std::runtime_error("Can't back substitute");
+    if (rank(equation) < ncol - 1) throw std::runtime_error("Can't back substitute since matrix is so singular");
     
     if (ret.empty() || arma::size(ret) != arma::size(ncol - 1, 1)) {
         ret.clear();
@@ -222,6 +332,7 @@ void evaluateJacobian(
         ret(i, 2) = (theta(2, 0) - beacon[i].getZ()) / denominator;
     }
 }
+
 void evaluateF(
     std::vector<double>& dist_to_beacon,
     std::vector<Coordinate>& beacon,
@@ -247,3 +358,4 @@ void evaluateF(
                         ) - dist_to_beacon[i];
     }
 }
+

@@ -1,0 +1,2 @@
+refPoint(ENU,WGS84): (0;0;0) (45;45;0)
+localENU: (10;0;0)

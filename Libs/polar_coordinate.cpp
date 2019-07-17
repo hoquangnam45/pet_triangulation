@@ -1,53 +1,71 @@
 #include "polar_coordinate.h"
+#include "coordinate.h"
 
 double polarCoordinate::getLat(){
     return lat;
 };
+
 double polarCoordinate::getLong(){
     return lon;
 }
+
 double polarCoordinate::getHeight(){
     return height;
 }
 
-double polarCoordinate::sind(double degree){
-    return sin(degree / 180. * PI);
-}
-double polarCoordinate::cosd(double degree){
-    return cos(degree / 180. * PI);
+polarCoordinate::polarCoordinate(const polarCoordinate& b){
+    *this = b;
 }
 
-// WSG84 model
-// Reference: https://en.wikipedia.org/wiki/Geographic_coordinate_conversion
-// local Cartersian is ENU
-// *Extra read: the gravity vector WILL point directly towards the centre of mass 
-//              of the oblate spheroid (not normal to the surface). It is the resultant force 
-//              of the gravity vector and centrifugal force vector that causes the force that 
-//              we experience to be normal to the surface of the Earth. This is called "Effective" 
-//              or "Apparent" gravity.
-// A reference: http://www-gpsg.mit.edu/12.201_12.501/BOOK/chapter2.pdf
+polarCoordinate polarCoordinate::ECEFtoWGS84(Coordinate& ECEFCoor){
+    double  x = ECEFCoor.getX(),
+            y = ECEFCoor.getY(),
+            z = ECEFCoor.getZ();
+    double a = EQUATORIAL_RADIUS_METER;
+    double b = POLAR_RADIUS_METER;
+    double e = sqrt(1 - pow(b/a, 2));
+    double ep = sqrt(pow(a/b, 2) - 1);
+    double p = sqrt(x*x + y*y);
+    double longtitude = atan2(ECEFCoor.getY(), ECEFCoor.getX());
 
-polarCoordinate polarCoordinate::ENUtoWSG84(polarCoordinate& refPolarWSG84, 
-                                            Coordinate& localCartPoint){
-    double  lat = refPolarWSG84.getLat(),
-            lon = refPolarWSG84.getLong(),
-            height = refPolarWSG84.getHeight();
-    // double  lat = 45.,
-    //         lon = 0.,
-    //         height = 0.;
+    double k0 = 1. / (1 - e*e);
+    double k = k0;
+    int idx = 0;
+    double diff = 1000;
+    double min_diff = diff;
+    while(diff > NEWTON_DIFF_THRESH && idx < MAX_NEWTON_ITER){
+        double c = pow(p*p + (1-e*e) * z*z * k*k, 3./2.) / (a * e*e);
+        double k_temp = 1 + (p*p + (1-e*e) * z*z * k*k*k) / (c - p*p);
+        diff = std::abs(k_temp-k);
+        if (diff < min_diff){
+            k = k_temp;
+            min_diff = diff;
+        }
+        else 
+            break;
+        idx++;
+    }
+    double height = 1./(e*e) * (1./k - 1./k0) * sqrt(p*p + z*z * k*k);
+    double latitude = atan2(k, p/z);
 
-    // Calculate ECEF coordinate of reference point
-    double N =  pow(EQUATORIAL_RADIUS_METER,2) / 
-                sqrt(
-                    pow(EQUATORIAL_RADIUS_METER,2) * pow(cosd(lat), 2) +
-                    pow(POLAR_RADIUS_METER,2) * pow(sind(lat), 2)
-                );
-    double refOx_ECEF = (N + height) * cosd(lat) * cosd(lon);
-    double refOy_ECEF = (N + height) * cosd(lat) * sind(lon);
-    double refOz_ECEF = (N * pow(POLAR_RADIUS_METER / EQUATORIAL_RADIUS_METER,2) + height) * sind(lat);
+    // convert rad to degree
+    longtitude = longtitude / PI * 180.;
+    latitude = latitude / PI * 180.; 
+    return polarCoordinate(latitude, longtitude, height);
+}
 
-    arma::mat refECEF = {refOx_ECEF, refOy_ECEF, refOz_ECEF};
-    std::cout << refECEF << std::endl;
+polarCoordinate polarCoordinate::ENUtoWGS84(Coordinate& refPoint, 
+                                            Coordinate& localENU){
+    Coordinate originPoint = Coordinate::findOriginENU(refPoint);
+    
+    double  lat = originPoint.getPolar().getLat(),
+            lon = originPoint.getPolar().getLong(),
+            height = originPoint.getPolar().getHeight();
+
+    // Calculate ECEF coordinate of origin point
+    polarCoordinate originPolar = originPoint.getPolar();
+    Coordinate originECEF = Coordinate::WGS84toECEF(originPolar);
+    // std::cout << originECEF << std::endl;
 
     // Calculate rotation matrix axis
     arma::mat rot = {
@@ -56,22 +74,12 @@ polarCoordinate polarCoordinate::ENUtoWSG84(polarCoordinate& refPolarWSG84,
         {0, cosd(lat), sind(lat)}
     };
 
-    // Convert local Cart to ECEF
-    Coordinate localCartPoint(15.,45.,1000.);
-    arma::mat localECEF = (rot * localCartPoint.toMat()).t() + refECEF;
-    std::cout << localECEF << std::endl;
+    // Convert local ENU to ECEF
+    arma::mat mlocalECEF= (rot * localENU.toMat()) + originECEF.toMat(); 
+    Coordinate localECEF = Coordinate::toCoordinate(mlocalECEF);
+    // std::cout << localECEF << std::endl;
 
-    return ECEFtoWSG84(Coordinate::toCoordinate(localECEF));
+    return ECEFtoWGS84(localECEF);
 };
-polarCoordinate polarCoordinate::ECEFtoWSG84(Coordinate ECEFcoor){
-    
-}
-// Coordinate polarCoordinate::PolartoCartersian(Coordinate& refPoint, 
-//                                               polarCoordinate& refPolar, 
-//                                               polarCoordinate& convertPoint){
-//     double Ox;
-//     double Oy;
-//     double Oz;
 
-//     return Coordinate(Ox, Oy, Oz);
-// };
+
